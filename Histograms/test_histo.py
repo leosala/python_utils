@@ -2,13 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from time import time
 from sys import argv
-from histogram import create_histogram_int
+from histogram import create_histogram_int, create_histogram_double
+
 
 #@profile
 def histo_2(data, bins):
     binned_values = np.digitize(data.flatten(), bins[1:-1])
     values = np.bincount(binned_values)
-    #bins = np.insert(bins, -1, 1)
     return bins, values
 
 
@@ -16,9 +16,10 @@ samples = 5
 nbins = int(argv[1])
 print "##### ", nbins
 
-data = np.random.randint(0, 100, size=1000*1000*1).astype(np.uint16)
+# data = np.random.randint(0, 100, size=1000 * 1000 * 100).astype(np.float64)
+data = np.random.randint(0, 100, size=1000 * 1000 * 100).astype(np.uint16)
 
-text_file = open("histo_perf_meas_1M.txt", "a+")
+text_file = open("histo_perf_meas_100M_uint16.txt", "a+")
 
 meas1 = np.zeros(samples)
 meas2 = np.zeros(samples)
@@ -42,6 +43,7 @@ for i in xrange(samples):
     meas = np.zeros(samples)
     t0 = time()
     bins3, histo3 = create_histogram_int(data, nbins)
+    # bins3, histo3 = create_histogram_double(data, nbins)
     meas3[i] = time() - t0
 
     print (histo1 - histo2 == 0).all()
@@ -60,7 +62,3 @@ print "%s: %.2f +- %.2f" %(sample, meas3.mean(), meas3.std())
 text_file.write("%s\t%i\t%f\t%f\n" % (sample, nbins, meas3.mean(), meas3.std()))
 
 text_file.close()
-
-#plt.figure()
-#plt.bar(bins[:], histo[:])
-#plt.show()
