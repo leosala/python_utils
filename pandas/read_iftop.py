@@ -11,7 +11,9 @@ def normalize_file(fname):
     cmd += ' grep -v "Cumulative" | grep -v "^$" | sed "s=^   ==g" |'
     cmd += ' sed "s=  *=:=g" > %s_norm.log' % fname
     retcode = subprocess.call(cmd, shell=True)
-    print retcode
+    if retcode != 0:
+        print "[ERROR] Something went wrong in the IFTOP file normalization"
+        return None
     return '%s_norm.log' % fname
 
 
@@ -27,7 +29,13 @@ def read_iftop(fname):
     loading normalized iftop output
     """
     norm_fname = normalize_file(fname)
-    df = pd.read_csv(norm_fname, sep=':', skiprows=1, names=["id", "host", "dir", "2s", "10s", "40s", "cum"], converters={"2s": convert_units, "10s": convert_units, "40s": convert_units}, error_bad_lines=False)
+    if norm_fname is None:
+        return -1
+    
+    df = pd.read_csv(norm_fname, sep=':', skiprows=1,
+                     names=["id", "host", "dir", "2s", "10s", "40s", "cum"],
+                     converters={"2s": convert_units, "10s": convert_units, "40s": convert_units},
+                     error_bad_lines=False)
     df.ix[1::2, "id"].values[:] = df[0::2]["id"].values[:]
     dest = df["host"].values[:].copy()
     dest[0::2] = dest[1::2]
