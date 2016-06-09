@@ -4,14 +4,13 @@ import socket
 import sys
 
 
-format = "i"
-
-
 def run_server(ip, port, outfile):
     outf = open(outfile, 'wb')
     print("Opened output file %s" % outfile)
     
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 2000 * 1024 * 1024)
+
     print("Starting server on %s:%s" % (ip, port))
     print(s.bind((ip, int(port))))
     #s.listen(0)
@@ -20,8 +19,9 @@ def run_server(ip, port, outfile):
 
     while True:
         try:
-            data, sender = s.recvfrom(65565)
-            print(sender, data)
+            data, sender = s.recvfrom(2000 * 1024 * 1024)
+            print("Got data from %s, size %d" % (sender, len(data)))
+            
             if len(data) == 0:
                 print("No more data, closing")
                 raise RuntimeError
