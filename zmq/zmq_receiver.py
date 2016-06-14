@@ -2,8 +2,11 @@ import zmq
 import numpy as np
 from time import sleep, time
 import argparse
+<<<<<<< HEAD
 import h5py
 import sys
+=======
+>>>>>>> 4c02664... wip
 
 
 def send_array(socket, A, flags=0, copy=True, track=False):
@@ -21,10 +24,16 @@ def send_array(socket, A, flags=0, copy=True, track=False):
 def recv_array(socket, flags=0, copy=True, track=False):
     """recv a numpy array"""
     md = socket.recv_json(flags=flags)
+<<<<<<< HEAD
     print md
     msg = socket.recv(flags=flags, copy=copy, track=track)
     buf = buffer(msg)
     A = np.frombuffer(buf, dtype=md['type'])
+=======
+    msg = socket.recv(flags=flags, copy=copy, track=track)
+    buf = buffer(msg)
+    A = np.frombuffer(buf, dtype=md['dtype'])
+>>>>>>> 4c02664... wip
     return A.reshape(md['shape'])
 
 
@@ -36,8 +45,11 @@ if __name__ == "__main__":
                         help='ZMQ connection type, default: SUB')
     parser.add_argument('--mode', type=str, choices=["BIND", "CONNECT"], default="CONNECT",
                         help='ZMQ connection mode, default: CONNECT')
+<<<<<<< HEAD
     parser.add_argument('--output', type=str, default=None,
                         help='Output file (HDF5)')
+=======
+>>>>>>> 4c02664... wip
 
     args = parser.parse_args()
 
@@ -60,6 +72,7 @@ if __name__ == "__main__":
     else:
         skt.bind(args.ip)
 
+<<<<<<< HEAD
     if args.output is not None:
         outf = h5py.File(args.output, "w")
         dst = None
@@ -81,3 +94,9 @@ if __name__ == "__main__":
             if dst is not None:
                 outf.close()
             sys.exit()
+=======
+    while True:
+        md = skt.recv_json()
+        print md
+        data = skt.recv()
+>>>>>>> 4c02664... wip
