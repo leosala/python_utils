@@ -20,7 +20,7 @@ def run_server(ip, port, outfile):
     while True:
         try:
             data, sender = s.recvfrom(2000 * 1024 * 1024)
-            print("Got data from %s, size %d" % (sender, len(data)))
+            #print("Got data from %s, size %d" % (sender, len(data)))
             
             if len(data) == 0:
                 print("No more data, closing")
