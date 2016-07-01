@@ -11,6 +11,7 @@ N = 1
 #SIZES =  (50, 100, 200, 500, 1000, 1500, 2000, 2500)
 SIZES = ()
 
+
 def print_table(results):
     print "| array size | size MB | MB/s | Gbps |"
     for p, v in results.iteritems():
