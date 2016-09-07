@@ -1,7 +1,5 @@
 #!/bin/bash
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 st=0.005
 
 taskset -c 19 python socket_replay.py /scratch/leo/Gigafrost_noise/10.0.0.100_2000.dat  10.0.0.100 2000  & 

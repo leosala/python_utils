@@ -34,7 +34,9 @@ if __name__ == "__main__":
                         help='ip connecting to')
     parser.add_argument('port', type=str, nargs=1,
                         help='port connecting to')
+    parser.add_argument('freq', type=float, default=1,
+                        help='data output frequency in Hz. Default: 1')
 
     args = parser.parse_args()
 
-    run_replay(args.filename[0], args.ip[0], args.port[0])
+    run_replay(args.filename[0], args.ip[0], args.port[0], sleep_time=1/args.freq)
