@@ -13,7 +13,7 @@ def recv_array(socket, flags=0, copy=True, track=False):
     msg = socket.recv(flags=flags, copy=copy, track=track)
     buf = buffer(msg)
     A = np.frombuffer(buf, dtype=md['type'])
-    return A.reshape(md['shape'])
+    return md, A.reshape(md['shape'])
 
 
 if __name__ == "__main__":
@@ -26,9 +26,13 @@ if __name__ == "__main__":
                         help='ZMQ connection mode, default: CONNECT')
     parser.add_argument('--output', type=str, default=None,
                         help='Output file (HDF5)')
-
+    parser.add_argument('--other_fields', type=str, default="",
+                        help="Additional datasets to be created from fields in the json header")
+    parser.add_argument('--frames', type=int, required=True,
+                        help="Number of frames to write")
     args = parser.parse_args()
 
+    args.other_fields = args.other_fields.split(",")
     ctx = zmq.Context()
     
     skt_type = zmq.SUB
@@ -53,19 +57,30 @@ if __name__ == "__main__":
         dst = None
 
     idx = 0
-    while True:
+    dst_md = {}
+    while idx < args.frames:
         try:
-            data = recv_array(skt)
-
-            print data
+            md, data = recv_array(skt)
+            
             if args.output is None:
                 continue
             if dst is None:
-                dst = outf.create_dataset("/data", shape=(1000, ) + data.shape, dtype=data.dtype)
+                dst = outf.create_dataset("/data", shape=(args.frames, ) + data.shape, dtype=data.dtype)
+                for f in args.other_fields:
+                    dst_md[f] = outf.create_dataset(f, shape=(args.frames, ), dtype=md[f].__class__)
+                        
             dst[idx] = data
+            for f in args.other_fields:
+                dst_md[f][idx] = md[f]
             idx += 1
         except KeyboardInterrupt:
             print "CTRL-C pressed, exiting"
-            if dst is not None:
-                outf.close()
-            sys.exit()
+            break
+        
+    if dst is not None:
+        print "closing file"
+        outf.close()
+        print "closed"
+        sys.exit()
+
+    print("exit!")
