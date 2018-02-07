@@ -14,7 +14,7 @@ def recv_array(socket, flags=0, copy=False, track=True):
     msg = socket.recv(flags=flags, copy=copy, track=track)
     buf = buffer(msg)
     A = np.frombuffer(buf, dtype=md['type'])
-    return A.reshape(md['shape'])
+    return md, A.reshape(md['shape'])
 
 
 def print_table(results):
@@ -39,9 +39,13 @@ if __name__ == "__main__":
                         help='Output file (HDF5)')
     parser.add_argument('--verbose', '-v', type=bool, default=False,
                         help='verbose mode')
-
+    parser.add_argument('--other_fields', type=str, default="",
+                        help="Additional datasets to be created from fields in the json header")
+    parser.add_argument('--frames', type=int, required=True,
+                        help="Number of frames to write")
     args = parser.parse_args()
 
+    args.other_fields = args.other_fields.split(",")
     ctx = zmq.Context()
 
     skt_type = zmq.SUB

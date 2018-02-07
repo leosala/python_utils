@@ -11,6 +11,5 @@ for ip in $IPS; do
 	PIDS="$! $PIDS"
     done
 done
-
 sleep 1
 echo "After capture is completed, execute kill -9 "$PIDS
