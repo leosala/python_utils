@@ -73,15 +73,27 @@ def read_file(fname, dset="/array", chunk=-1):
 
 def write_file(fname, data, complib, complevel, chunk=-1):
     FILTERS = None
+    times = []
     if complib != "orig":
         FILTERS = tables.Filters(complib=complib, complevel=complevel)
         with closing(tables.open_file(fname, mode='w', filters=FILTERS)) as hdf:
-            hdf.create_carray('/', 'array', tables.Atom.from_type(data.dtype), shape=data.shape)
-            for i in range(data.shape):
-                pass
+            table = hdf.create_carray('/', 'array', tables.Atom.from_type(data.dtype.name), shape=data.shape)
+            for i in range(data.shape[0]):
+                start = time()
+                table[i] = data[i][:]
+                table.flush()
+                times.append(time() - start)
     else:
         with closing(tables.open_file(fname, mode='w', )) as hdf:
-            hdf.create_carray('/', 'array', tables.Atom.from_type(data.dtype), shape=data.shape)
+            table = hdf.create_carray('/', 'array', tables.Atom.from_type(data.dtype.name), shape=data.shape)
+            for i in range(data.shape[0]):
+                start = time()
+                table[i] = data[i][:]
+                table.flush()
+                times.append(time() - start)
+    hdf.close()
+    ntimes = np.array(times)
+    return [ntimes.mean(), ntimes.std()]
 
 
 if __name__ == "__main__":
@@ -107,9 +119,6 @@ if __name__ == "__main__":
         reads[s] = np.empty((2, ))
 
     for t in range(n_tries):
-        if t % 10 == 0:
-            print(("Doing ", t, "/", n_tries))
-
         if args.files == []:
             x = random.sample(list(range(size[0] * size[1])),
                               int((1 - zeros_perc) * size[0] * size[1]))
@@ -122,15 +131,15 @@ if __name__ == "__main__":
         time_t = {}
 
         for s in samples:
-            print(s)
             fname = dest_dir + "test_" + s + ".h5"
             start = time()
             create_file(fname, data, s, 5)
             time_t[s] = time() - start
 
+            
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
             ratios[s][t] = sizes["orig"][t] / sizes[s][t]
-            times[s][t] = time_t[s]
+            times[s] = write_file(fname, data, s, 5)
             reads[s] = read_file(fname)
             #os.remove(fname)
 
@@ -154,15 +163,12 @@ if __name__ == "__main__":
         plist[s + "_m"] = ratios[s].mean()
         plist[s + "_s"] = ratios[s].std()
         line += " %.1f +- %.1f |" % (plist[s + "_m"], plist[s + "_s"])
-        
     print(line)
 
-    line = "| WRITE_TIME |"
-    plist = {"op": zeros_perc, }
+    line = "| WRITE_TIME (ms)|"
+    plist = {}
     for s in samples:
-        plist[s + "_m"] = times[s].mean()
-        plist[s + "_s"] = times[s].std()
-        line += " %.1f +- %.1f |" % (plist[s + "_m"], plist[s + "_s"])
+        line += " %.2f +- %.2f |" % (100 * times[s][0], 100 * times[s][1])
     print(line)
 
     line = "| READ_TIME (ms)|"
