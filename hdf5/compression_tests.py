@@ -136,7 +136,6 @@ if __name__ == "__main__":
             create_file(fname, data, s, 5)
             time_t[s] = time() - start
 
-            
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
             ratios[s][t] = sizes["orig"][t] / sizes[s][t]
             times[s] = write_file(fname, data, s, 5)
