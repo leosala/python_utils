@@ -13,30 +13,39 @@ import random
 import os
 import h5py
 import argparse
+try:
+    import jungfrau_utils as ju
+except:
+    print("Cannot import jungfrau_utils")
+
+import scipy.stats
+import pickle
 
 
 label = "test"
 dataset = "jungfrau/data"
 n_tries = 1
 data = None
-dest_dir = "/tmp/"
+#dest_dir = "/tmp/"
 size = (400, 400)
 n_img = 100
 tot_size = size[0] * size[1]
 px_n = size[0] * size[1]
 zeros_perc = 0
 
-samples = ["orig", "zlib", "lzo", "blosc:lz4", 'blosc:snappy']
-#samples = ["orig", "blosc:lz4"]
+samples = ["orig", "zlib", "lzo", "blosc:lz4",  "blosc:lz4hc", 'blosc:snappy']
 
 data = np.random.randint(0, 2**16, size=[100, 1024, 1024])
-non_zeros = int((1-zeros_perc)*tot_size)
+non_zeros = int((1 - zeros_perc) * tot_size)
 
 
 def create_file(fname, data, complib, complevel):
     FILTERS = None
     if complib != "orig":
-        FILTERS = tables.Filters(complib=complib, complevel=complevel)
+        bitshuffle = False
+        if complib.find("blosc") != -1:
+            bitshuffle = True
+        FILTERS = tables.Filters(complib=complib, complevel=complevel, bitshuffle=bitshuffle)
         with closing(tables.open_file(fname, mode='w', filters=FILTERS)) as hdf:
             hdf.create_carray('/', 'array', obj=data)
     else:
@@ -68,7 +77,7 @@ def read_file(fname, dset="/array", chunk=-1):
         d = data[i][:]
         times.append(time() - start)
     ntimes = np.array(times)
-    return [ntimes.mean(), ntimes.std()]
+    return [ntimes.sum(), ntimes.mean(), ntimes.std()]
 
 
 def write_file(fname, data, complib, complevel, chunk=-1):
@@ -93,7 +102,7 @@ def write_file(fname, data, complib, complevel, chunk=-1):
                 times.append(time() - start)
     hdf.close()
     ntimes = np.array(times)
-    return [ntimes.mean(), ntimes.std()]
+    return [ntimes.sum(), ntimes.mean(), ntimes.std()]
 
 
 if __name__ == "__main__":
@@ -102,21 +111,33 @@ if __name__ == "__main__":
                         help='existing HDF5 files (if none, a random one will be created)')
     parser.add_argument('-n', type=int, default=10,
                         help='number of events to analyze (default=10)')
+    parser.add_argument('--outdir', '-o', type=str, default="/tmp",
+                        help='where to write temporary files')
+    parser.add_argument('--convert', '-c', type=bool, default=False,
+                        help="create also the converted file")
+    parser.add_argument('--zerosuppress', '-z', type=float, default=-99,
+                        help="Put to zero values smaller than this. Onlu apply if convert is enabled")
 
     args = parser.parse_args()
-    print(args.files)
+    print(args.files, args.outdir)
     if args.files != []:
         n_tries = len(args.files)
 
+    corrections_file = ""
+    if args.convert:
+        cf = h5py.File(corrections_file, "r")
+        G = cf["gains"]
+        P = cf["pedes"]
+        
     sizes = {}
     ratios = {}
     times = {}
     reads = {}
     for s in samples:
-        sizes[s] = np.empty((n_tries))
-        ratios[s] = np.empty((n_tries))
-        times[s] = np.empty((n_tries))
-        reads[s] = np.empty((2, ))
+        sizes[s] = np.zeros((n_tries, 3))
+        ratios[s] = np.zeros((n_tries, 3))
+        times[s] = np.zeros((n_tries, 3))
+        reads[s] = np.zeros((n_tries, 3))
 
     for t in range(n_tries):
         if args.files == []:
@@ -127,26 +148,40 @@ if __name__ == "__main__":
             zeros_perc = 1 - np.count_nonzero(data[0]) / float(data[0].shape[0] * data[0].shape[1])
         else:
             data = h5py.File(args.files[t])[dataset][:args.n][:]
-
+            if args.convert:
+                for i, d in enumerate(data):
+                    t = ju.apply_gain_pede(d, G=G, P=P)
+                    if args.zerosuppress != -99:
+                        data[i] = t[t < args.zerosuppress] = 0
+            
         time_t = {}
 
         for s in samples:
-            fname = dest_dir + "test_" + s + ".h5"
+            fname = os.path.join(args.outdir, "test_" + s + ".h5")
             start = time()
             create_file(fname, data, s, 5)
             time_t[s] = time() - start
 
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
             ratios[s][t] = sizes["orig"][t] / sizes[s][t]
-            times[s] = write_file(fname, data, s, 5)
-            reads[s] = read_file(fname)
-            #os.remove(fname)
+            times[s][:] = write_file(fname, data, s, 5)
+            reads[s][:] = read_file(fname)
+            os.remove(fname)
 
+    print(times)
     h = "| Metric |"
     for s in samples:
         h += " %s |" % s
 
     print(h)
+
+    for s in samples:
+        write_ratios = [x[0] / times['orig'][i][0] for i, x in enumerate(times[s])]
+        print(s, write_ratios, times[s][0][0], times['orig'][0][0])
+        print(s, scipy.stats.mstats.gmean(write_ratios))
+
+    outf = open(label + ".pkl", "wb")
+    pickle.dump({"files":args.files, "sizes":sizes, "writes":times, "reads":reads}, outf)
 
     line = "| SIZE |"
     plist = {}
@@ -164,16 +199,17 @@ if __name__ == "__main__":
         line += " %.1f +- %.1f |" % (plist[s + "_m"], plist[s + "_s"])
     print(line)
 
-    line = "| WRITE_TIME (ms)|"
-    plist = {}
-    for s in samples:
-        line += " %.2f +- %.2f |" % (100 * times[s][0], 100 * times[s][1])
-    print(line)
+#    line = "| WRITE_TIME (ms)|"
+#    plist = {}
+#    for s in samples:
+#        line += " %.2f +- %.2f |" % (100 * times[s][0], 100 * times[s][1])
+#    print(line)
+#
+#    line = "| READ_TIME (ms)|"
+#    plist = {}
+#    for s in samples:
+#        line += " %.2f +- %.2f |" % (100 * reads[s][0], 100 * reads[s][1])
+#    print(line)
 
-    line = "| READ_TIME (ms)|"
-    plist = {}
-    for s in samples:
-        line += " %.2f +- %.2f |" % (100 * reads[s][0], 100 * reads[s][1])
-    print(line)
 
-    np.savez(label, sizes, ratios, times)
+    print(times)
