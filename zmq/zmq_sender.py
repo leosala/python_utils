@@ -1,4 +1,4 @@
-from __future__ import division
+
 import zmq
 import numpy as np
 from time import sleep, time
@@ -13,11 +13,11 @@ SIZES = ()
 
 
 def print_table(results):
-    print "| array size | size MB | MB/s | Gbps |"
-    for p, v in results.iteritems():
+    print("| array size | size MB | MB/s | Gbps |")
+    for p, v in results.items():
         speed = np.array(v[2], ) / np.array(v[0], )
-        print "|", p, " | %.2f | %.1f +- %.1f | %.1f +- %.1f |" % (v[1][0], (speed).mean(), (speed).std(),  (8 * speed / 1000.).mean(), (8 * speed / 1000.).std())
-    print ""
+        print("|", p, " | %.2f | %.1f +- %.1f | %.1f +- %.1f |" % (v[1][0], (speed).mean(), (speed).std(),  (8 * speed / 1000.).mean(), (8 * speed / 1000.).std()))
+    print("")
 
 
 def send_array(socket, A, flags=0, copy=False, track=False):
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     SIZES = []
-    print args.sizes
+    print(args.sizes)
         
 
     ctx = zmq.Context()
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         for i in args.sizes:
             idx = 0
             t0 = time()
-            data = np.ones((i, i), dtype=int)
+            data = np.ones((i, i), dtype=np.uint16)
             pshape = data.shape
             size = data.nbytes / (1000. * 1000)
             while True:
@@ -97,17 +97,17 @@ if __name__ == "__main__":
                     idx += 1
                     if time() - t0 > T:
                         t = time() - t0
-                        if pshape not in results.keys():
+                        if pshape not in list(results.keys()):
                             results[pshape] = [[], [], []]
                         results[pshape][0].append(t)
                         results[pshape][1].append(size)
                         results[pshape][2].append(float(idx * size))
-                        print data.shape, "%.2f %f %.2f MB/s (%.2f MiB/s, %.2fGbps)" % (size, t, float(idx) * size / t, float(idx) * size*1000*1000/(1024*1024) / t, 8 * float(idx) * size / t/1000.)
+                        print(data.shape, "%.2f %f %.2f MB/s (%.2f MiB/s, %.2fGbps)" % (size, t, float(idx) * size / t, float(idx) * size*1000*1000/(1024*1024) / t, 8 * float(idx) * size / t/1000.))
                         print_table(results)
                         
                         break
                 except KeyboardInterrupt:
-                    print "CTRL-C pressed, exiting"
+                    print("CTRL-C pressed, exiting")
                     break
 
 

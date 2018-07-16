@@ -1,4 +1,4 @@
-from __future__ import division
+
 import zmq
 import numpy as np
 from time import sleep, time
@@ -12,19 +12,19 @@ def recv_array(socket, flags=0, copy=False, track=True):
     md = socket.recv_json(flags=flags)
     #print md
     msg = socket.recv(flags=flags, copy=copy, track=track)
-    buf = buffer(msg)
+    buf = memoryview(msg)
     A = np.frombuffer(buf, dtype=md['type'])
     return md, A.reshape(md['shape'])
 
 
 def print_table(results):
-    print ""
-    print "Throughput metrics:\n"
-    print "| array size | size MB | MB/s | Gbps |"
-    for p, v in results.iteritems():
+    print("")
+    print("Throughput metrics:\n")
+    print("| array size | size MB | MB/s | Gbps |")
+    for p, v in results.items():
         speed = np.array(v[2], ) / np.array(v[0], )
-        print "|", p, " | %.2f | %.1f +- %.1f | %.1f +- %.1f |" % (v[1][0], (speed).mean(), (speed).std(), (8 * speed / 1000.).mean(), (8 * speed / 1000.).std())
-    print ""
+        print("|", p, " | %.2f | %.1f +- %.1f | %.1f +- %.1f |" % (v[1][0], (speed).mean(), (speed).std(), (8 * speed / 1000.).mean(), (8 * speed / 1000.).std()))
+    print("")
 
 
 if __name__ == "__main__":
@@ -77,9 +77,9 @@ if __name__ == "__main__":
     results = {}
     while True:
         try:
-            data = recv_array(skt)
+            md, data = recv_array(skt)
             if args.verbose:
-                print data.shape
+                print(data.shape)
             idx += 1
             size = data.nbytes / (1000. * 1000.)
             if psize is None:
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
             if size != psize or len(data.shape) == 1:
                 t = time() - t0
-                if pshape not in results.keys():
+                if pshape not in list(results.keys()):
                     results[pshape] = [[], [], []]
                 results[pshape][0].append(t)
                 results[pshape][1].append(psize)
@@ -107,9 +107,9 @@ if __name__ == "__main__":
             #dst[idx] = data
             psize = size
         except KeyboardInterrupt:
-            print "CTRL-C pressed, exiting"
+            print("CTRL-C pressed, exiting")
             t = time() - t0
-            if pshape not in results.keys():
+            if pshape not in list(results.keys()):
                 results[pshape] = [[], [], []]
             results[pshape][0].append(t)
             results[pshape][1].append(psize)
