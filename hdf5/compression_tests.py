@@ -20,7 +20,7 @@ except:
 
 import scipy.stats
 import pickle
-
+from pprint import pprint
 
 gain_file = "/sf/alvra/config/jungfrau/jungfrau_4p5_gaincorrections_v0.h5"
 pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
@@ -238,3 +238,4 @@ if __name__ == "__main__":
 
 
     print(sizes)
+    pprint(times)
