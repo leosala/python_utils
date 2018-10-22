@@ -30,7 +30,7 @@ n_tries = 1
 data = None
 #dest_dir = "/tmp/"
 size = (400, 400)
-n_img = 100
+#n_img = 100
 tot_size = size[0] * size[1]
 px_n = size[0] * size[1]
 zeros_perc = 0
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     parser.add_argument('files', type=str, nargs='+',
                         help='existing HDF5 files (if none, a random one will be created)')
     parser.add_argument('-n', type=int, default=100,
-                        help='number of events to analyze (default=10)')
+                        help='number of events to analyze (default=100)')
     parser.add_argument('--outdir', '-o', type=str, default="/tmp",
                         help='where to write temporary files')
     parser.add_argument('--convert', '-c', action="store_true",
@@ -121,6 +121,7 @@ if __name__ == "__main__":
                         help='label for output file')
     parser.add_argument('--bitshuffle', '-b', action="store_true",
                         help="create also the converted file")
+    parser.add_argument('--compression_level', type=int, "compression level, when applicable", default=5)
     parser.add_argument('--dataset', '-d', type=str, help="Dataset name to be read", default="test")
 
     args = parser.parse_args()
@@ -147,7 +148,7 @@ if __name__ == "__main__":
     ratios = {}
     times = {}
     reads = {}
-    n_tries = 2
+    n_tries = 1
 
     for s in samples:
         sizes[s] = np.zeros((n_tries, 3))
@@ -182,9 +183,9 @@ if __name__ == "__main__":
             
             if args.convert:
                 print("%d %f" % (data[0,0,0], data2[0,0,0]))
-                times[s][t] = write_file(fname, data2, s, 5, args.bitshuffle)
+                times[s][t] = write_file(fname, data2, s, args.compression_level, args.bitshuffle)
             else:
-                times[s][t] = write_file(fname, data, s, 5, args.bitshuffle)
+                times[s][t] = write_file(fname, data, s, args.compression_level, args.bitshuffle)
             reads[s][t] = read_file(fname)
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
             print(fname, os.stat(fname).st_size)
