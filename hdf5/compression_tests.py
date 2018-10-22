@@ -25,7 +25,7 @@ import pickle
 gain_file = "/sf/alvra/config/jungfrau/jungfrau_4p5_gaincorrections_v0.h5"
 pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
 #label = "test"
-dataset = "data/JF4.5M/data"
+#dataset = "data/JF4.5M/data"
 n_tries = 1
 data = None
 #dest_dir = "/tmp/"
@@ -56,7 +56,7 @@ def create_file(fname, data, complib, complevel, bitshuffle=False):
             
 
 def read_file(fname, dset="/array", chunk=-1):
-    f = tables.open_file(fname)
+    f = tables.open_file(fname, "r")
     data = f.get_node(dset)
     times = []
     for i in range(data.shape[0]):
@@ -121,6 +121,7 @@ if __name__ == "__main__":
                         help='label for output file')
     parser.add_argument('--bitshuffle', '-b', action="store_true",
                         help="create also the converted file")
+    parser.add_argument('--dataset', '-d', type=str, help="Dataset name to be read", default="test")
 
     args = parser.parse_args()
     label = args.label
@@ -163,7 +164,7 @@ if __name__ == "__main__":
             zeros_perc = 1 - np.count_nonzero(data[0]) / float(data[0].shape[0] * data[0].shape[1])
         else:
             print("Opening file", args.files[t])
-            data = h5py.File(args.files[t])[dataset][:args.n][:]
+            data = h5py.File(args.files[t], "r")[args.dataset][:args.n][:]
             if args.convert:
                 data2 = np.ndarray(shape=data.shape, dtype=np.float16)
                 for i, d in enumerate(data):
