@@ -121,7 +121,7 @@ if __name__ == "__main__":
                         help='label for output file')
     parser.add_argument('--bitshuffle', '-b', action="store_true",
                         help="create also the converted file")
-    parser.add_argument('--compression_level', type=int, "compression level, when applicable", default=5)
+    parser.add_argument('--compression_level', type=int, help="compression level, when applicable", default=5)
     parser.add_argument('--dataset', '-d', type=str, help="Dataset name to be read", default="test")
 
     args = parser.parse_args()
