@@ -17,13 +17,17 @@ try:
     import jungfrau_utils as ju
 except:
     print("Cannot import jungfrau_utils")
+    print(sys.exc_info()[1])
 
 import scipy.stats
 import pickle
 from pprint import pprint
 
-gain_file = "/sf/alvra/config/jungfrau/jungfrau_4p5_gaincorrections_v0.h5"
-pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
+#gain_file = "/sf/alvra/config/jungfrau/jungfrau_4p5_gaincorrections_v0.h5"
+gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF06T32V01/gains.h5"
+#pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
+pede_file = "/sf/alvra/data/p17502/res/JF_pedestals/pedestal_20180813_0704.JF06T32V01.res.h5"
+
 #label = "test"
 #dataset = "data/JF4.5M/data"
 n_tries = 1
@@ -35,7 +39,7 @@ tot_size = size[0] * size[1]
 px_n = size[0] * size[1]
 zeros_perc = 0
 
-samples = ["orig", "zlib", "lzo", "blosc:lz4", "blosc:lz4_9", "blosc:lz4hc", 'blosc:snappy']
+samples = ["orig", "zlib_5", "lzo", "blosc:lz4", "blosc:lz4_9", "blosc:lz4hc", 'blosc:snappy']
 
 data = np.random.randint(0, 2**16, size=[100, 1024, 1024])
 non_zeros = int((1 - zeros_perc) * tot_size)
@@ -123,6 +127,7 @@ if __name__ == "__main__":
                         help="create also the converted file")
     parser.add_argument('--compression_level', type=int, help="compression level, when applicable", default=5)
     parser.add_argument('--dataset', '-d', type=str, help="Dataset name to be read", default="test")
+    parser.add_argument('--keep', '-k', action="store_true", help="keep temporary files", default=False)
 
     args = parser.parse_args()
     label = args.label
@@ -148,7 +153,6 @@ if __name__ == "__main__":
     ratios = {}
     times = {}
     reads = {}
-    n_tries = 1
 
     for s in samples:
         sizes[s] = np.zeros((n_tries, 3))
@@ -167,14 +171,14 @@ if __name__ == "__main__":
             print("Opening file", args.files[t])
             data = h5py.File(args.files[t], "r")[args.dataset][:args.n][:]
             if args.convert:
-                data2 = np.ndarray(shape=data.shape, dtype=np.float16)
+                data2 = np.ndarray(shape=data.shape, dtype=np.float32)
                 for i, d in enumerate(data):
                     temp = ju.apply_gain_pede(d, G=G, P=P)
                     if args.zerosuppress != -99:
                         temp[temp < args.zerosuppress] = 0
 			
                     data2[i][:] = temp[:]
-            
+
         time_t = {}
 
         for s in samples:
@@ -189,10 +193,11 @@ if __name__ == "__main__":
             reads[s][t] = read_file(fname)
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
             print(fname, os.stat(fname).st_size)
-            ratios[s][t] = sizes["orig"][t] / sizes[s][t]
+            ratios[s][t] = sizes[s][t] / sizes["orig"][t]
 
             print("Removing ", fname)
-            os.remove(fname)
+            if not args.keep:
+                os.remove(fname)
             #sleep(2)
         print(sizes)
     #print(times)
@@ -215,7 +220,7 @@ if __name__ == "__main__":
     for s in samples:
         plist[s + "_m"] = ratios[s].mean()
         plist[s + "_s"] = ratios[s].std()
-        line += " %.1f +- %.1f |" % (plist[s + "_m"], plist[s + "_s"])
+        line += " %.2f +- %.2f |" % (plist[s + "_m"], plist[s + "_s"])
     print(line)
 
 #    line = "| WRITE_TIME (ms)|"
