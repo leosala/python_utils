@@ -45,6 +45,13 @@ data = np.random.randint(0, 2**16, size=[100, 1024, 1024])
 non_zeros = int((1 - zeros_perc) * tot_size)
 
 
+# from: https://realpython.com/python-rounding/#applications-and-best-practices
+def round_half_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    # Replace math.floor with np.floor
+    return np.floor(n * multiplier + 0.5) / multiplier
+
+
 def create_file(fname, data, complib, complevel, bitshuffle=False):
     FILTERS = None
     if complib != "orig":
@@ -97,6 +104,7 @@ def write_file(fname, data, complib, complevel, bitshuffle=False, chunk=-1):
         hdf.close()
     else:
         with closing(tables.open_file(fname, mode='w', )) as hdf:
+            print(data.dtype.name)
             table = hdf.create_carray('/', 'array', tables.Atom.from_type(data.dtype.name), shape=data.shape)
             for i in range(data.shape[0]):
                 start = time()
@@ -128,6 +136,8 @@ if __name__ == "__main__":
     parser.add_argument('--compression_level', type=int, help="compression level, when applicable", default=5)
     parser.add_argument('--dataset', '-d', type=str, help="Dataset name to be read", default="test")
     parser.add_argument('--keep', '-k', action="store_true", help="keep temporary files", default=False)
+    parser.add_argument('--round', '-r', type=int, help="Round", default="-1")
+    parser.add_argument('--toint', '-i', action="store_true", help="Store converted data to in32",)
 
     args = parser.parse_args()
     label = args.label
@@ -137,6 +147,11 @@ if __name__ == "__main__":
         label += "-z{:.2f}".format(args.zerosuppress)
     if args.bitshuffle:
         label += "-bitshuffle"
+    if args.round != -1:
+        label += "-round_{}".format(args.round)
+
+    if label != "":
+        label += "-"
         
     if args.files != []:
         n_tries = len(args.files)
@@ -164,21 +179,32 @@ if __name__ == "__main__":
         if args.files == []:
             x = random.sample(list(range(size[0] * size[1])),
                               int((1 - zeros_perc) * size[0] * size[1]))
-            data = np.zeros((args.n, size[0], size[1]), dtype="i2")
+            data = np.zeros((args.n, size[0], size[1]), dtype=np.uint16)
             create_jf_images(data, args.n, zeros_perc, size, mode=0)
             zeros_perc = 1 - np.count_nonzero(data[0]) / float(data[0].shape[0] * data[0].shape[1])
         else:
             print("Opening file", args.files[t])
             data = h5py.File(args.files[t], "r")[args.dataset][:args.n][:]
             if args.convert:
-                data2 = np.ndarray(shape=data.shape, dtype=np.float32)
+                if args.toint:
+                    data2 = np.ndarray(shape=data.shape, dtype=np.int32)
+                else:
+                    data2 = np.ndarray(shape=data.shape, dtype=np.float32)
                 for i, d in enumerate(data):
                     temp = ju.apply_gain_pede(d, G=G, P=P)
                     if args.zerosuppress != -99:
                         temp[temp < args.zerosuppress] = 0
-			
-                    data2[i][:] = temp[:]
-
+                    if args.round != -1:
+                        data2[i][:] = round_half_up(temp[:], args.round)
+                    elif args.toint:
+                        data2[i][:] = 1000 * temp[:] # - (1000 * temp[:]) % 100)
+                    else:
+                        data2[i][:] = temp[:] 
+            elif args.round != -1:
+                data = round_half_up(data, args.round)
+            #else:
+            #    print("no convert")
+            #    data = np.bitwise_and(data, ~1).astype(np.uint16)
         time_t = {}
 
         for s in samples:
