@@ -262,7 +262,7 @@ if __name__ == "__main__":
     if args.round != -1:
         label += "-round_{}".format(args.round)
     if args.modulo != 1:
-        label += "-mod_{}".format(args.round)
+        label += "-mod_{}".format(args.modulo)
 
     histos = []
 
