@@ -262,6 +262,7 @@ if __name__ == "__main__":
     if args.round != -1:
         label += "-round_{}".format(args.round)
 
+
     # Get the number of loops from file list, if available        
     if args.files != []:
         n_tries = len(args.files)
@@ -306,7 +307,6 @@ if __name__ == "__main__":
                     data2 = np.ndarray(shape=data.shape, dtype=np.int32)
                 else:
                     data2 = np.ndarray(shape=data.shape, dtype=np.float32)
-            
                 for i, d in enumerate(data):
                     temp = ju.apply_gain_pede(d, G=G, P=P)
 
