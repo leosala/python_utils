@@ -327,6 +327,10 @@ if __name__ == "__main__":
                         data2[i][:] = temp[:] 
             elif args.round != 1:
                 data = round_half_up(data, args.round)
+        if data2 is not None:
+            histos.append(np.histogram(data2, bins=np.arange(data2.min(), data2.max(), 1)))
+        else:
+            histos.append(np.histogram(data, bins=np.arange(data.min(), data.max(), 1)))
             
         time_t = {}
 
@@ -337,10 +341,8 @@ if __name__ == "__main__":
             
             if args.convert:
                 times[s][t] = write_file(fname, data2, s, args.compression_level, args.bitshuffle)
-                histos.append(np.histogram(data2, bins=np.arange(data2.min(), data2.max(), 1)))
             else:
                 times[s][t] = write_file(fname, data, s, args.compression_level, args.bitshuffle)
-                histos.append(np.histogram(data, bins=np.arange(data.min(), data.max(), 1)))
 
             reads[s][t] = read_file(fname)
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
