@@ -263,6 +263,8 @@ if __name__ == "__main__":
         label += "-round_{}".format(args.round)
     if args.modulo != 1:
         label += "-mod_{}".format(args.modulo)
+    if args.remove_lsb:
+        label += "-remove_lsb"
 
     histos = []
 
@@ -313,6 +315,7 @@ if __name__ == "__main__":
                     data2 = np.ndarray(shape=data.shape, dtype=np.int32)
                 else:
                     data2 = np.ndarray(shape=data.shape, dtype=np.float32)
+
                 for i, d in enumerate(data):
                     temp = ju.apply_gain_pede(d, G=G, P=P)
 
@@ -322,17 +325,22 @@ if __name__ == "__main__":
                     if args.round != -1:
                         data2[i][:] = round_half_up(temp[:], args.round)
                     elif args.toint:
-                        data2[i][:] = 1000 * temp[:]
+                        temp[:] *= 1000
                         if args.modulo != 0:
-                            data2[i][:] = data[i][:] - (data[i][:] % args.modulo)
+                            data2[i][:] = temp[:] - (temp[:] % args.modulo)
+                        else:
+                            data2[i][:] = temp[:]
                     else:
                         data2[i][:] = temp[:] 
             elif args.round != 1:
                 data = round_half_up(data, args.round)
+                
+        # from -10 kEv to 1000 keV
+        bins = np.arange(-1e4, 1e6, 10)
         if data2 is not None:
-            histos.append(np.histogram(data2, bins=np.arange(data2.min(), data2.max(), 1)))
+            histos.append(np.histogram(np.clip(data2, bins[0], bins[-1]), bins=bins))
         else:
-            histos.append(np.histogram(data, bins=np.arange(data.min(), data.max(), 1)))
+            histos.append(np.histogram(data, bins=np.arange(data.min(), data.max(), 10)))
             
         time_t = {}
 
