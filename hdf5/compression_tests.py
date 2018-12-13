@@ -261,6 +261,8 @@ if __name__ == "__main__":
         label += "-bitshuffle"
     if args.round != -1:
         label += "-round_{}".format(args.round)
+    if args.modulo != 1:
+        label += "-mod_{}".format(args.round)
 
     histos = []
 
@@ -321,8 +323,8 @@ if __name__ == "__main__":
                         data2[i][:] = round_half_up(temp[:], args.round)
                     elif args.toint:
                         data2[i][:] = 1000 * temp[:]
-                        if args.mod != 0:
-                            data2[i][:] = data[i][:] - (data[i][:] % args.mod)
+                        if args.modulo != 0:
+                            data2[i][:] = data[i][:] - (data[i][:] % args.modulo)
                     else:
                         data2[i][:] = temp[:] 
             elif args.round != 1:
@@ -356,6 +358,7 @@ if __name__ == "__main__":
 
     print("Saving histograms as {}".format(label + "-histo.npz"))
     np.savez_compressed(label + "-histo.npz", histos)
+
 
     # Metrics printing
     h = "| Metric |"
