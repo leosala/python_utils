@@ -261,6 +261,8 @@ if __name__ == "__main__":
         label += "-bitshuffle"
     if args.round != -1:
         label += "-round_{}".format(args.round)
+    if args.modulo != 1:
+        label += "-mod_{}".format(args.round)
 
 
     # Get the number of loops from file list, if available        
@@ -317,8 +319,8 @@ if __name__ == "__main__":
                         data2[i][:] = round_half_up(temp[:], args.round)
                     elif args.toint:
                         data2[i][:] = 1000 * temp[:]
-                        if args.mod != 0:
-                            data2[i][:] = data[i][:] - (data[i][:] % args.mod)
+                        if args.modulo != 0:
+                            data2[i][:] = data[i][:] - (data[i][:] % args.modulo)
                     else:
                         data2[i][:] = temp[:] 
             elif args.round != 1:
@@ -343,7 +345,7 @@ if __name__ == "__main__":
                 print("Removing ", fname)
                 os.remove(fname)
 
-        print("Sizes {} {}: {}".format(s, sizes))
+        print("Sizes {}: {}".format(s, sizes))
     
     
     # Metrics printing
