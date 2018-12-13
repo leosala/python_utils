@@ -262,6 +262,8 @@ if __name__ == "__main__":
     if args.round != -1:
         label += "-round_{}".format(args.round)
 
+    histos = []
+
 
     # Get the number of loops from file list, if available        
     if args.files != []:
@@ -273,12 +275,14 @@ if __name__ == "__main__":
         G = gf["gains"][:]
         cf = h5py.File(pede_file, "r")
         P = cf["gains"][:]
-        
+
     # Initialize counters. Each counter contains 3 values: sum, mean, std
     sizes = {}
     ratios = {}
     times = {}
     reads = {}
+
+    data2 = None
 
     for s in samples:
         sizes[s] = np.zeros((n_tries, 3))
@@ -326,14 +330,17 @@ if __name__ == "__main__":
             
         time_t = {}
 
+
         # execute test for each sample / compression
         for s in samples:
             fname = os.path.join(args.outdir, "test_" + s + label +".h5").replace(":", "_")
             
             if args.convert:
                 times[s][t] = write_file(fname, data2, s, args.compression_level, args.bitshuffle)
+                histos.append(np.histogram(data2, bins=np.arange(data2.min(), data2.max(), 1)))
             else:
                 times[s][t] = write_file(fname, data, s, args.compression_level, args.bitshuffle)
+                histos.append(np.histogram(data, bins=np.arange(data.min(), data.max(), 1)))
 
             reads[s][t] = read_file(fname)
             sizes[s][t] = float(os.stat(fname).st_size) / (1000. * 1000.)
@@ -343,9 +350,11 @@ if __name__ == "__main__":
                 print("Removing ", fname)
                 os.remove(fname)
 
-        print("Sizes {} {}: {}".format(s, sizes))
-    
-    
+        print("Sizes {}: {}".format(s, sizes))
+
+    print("Saving histograms as {}".format(label + "-histo.npz"))
+    np.savez_compressed(label + "-histo.npz", histos)
+
     # Metrics printing
     h = "| Metric |"
     for s in samples:
