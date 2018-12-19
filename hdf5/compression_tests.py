@@ -25,10 +25,10 @@ from pprint import pprint
 
 ### Gain / pede files - needed if want to test calibrated data
 # TODO pass this as arguments
-#gain_file = "/sf/alvra/config/jungfrau/jungfrau_4p5_gaincorrections_v0.h5"
-gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF06T32V01/gains.h5"
-#pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
-pede_file = "/sf/alvra/data/p17502/res/JF_pedestals/pedestal_20180813_0704.JF06T32V01.res.h5"
+gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF02T09V01/gains.h5"
+#gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF06T32V01/gains.h5"
+pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
+#pede_file = "/sf/alvra/data/p17502/res/JF_pedestals/pedestal_20180813_0704.JF06T32V01.res.h5"
 
 ### Parameters for fake data production
 n_tries = 1
@@ -39,7 +39,8 @@ px_n = size[0] * size[1]
 zeros_perc = 0
 
 ### Compression algos to be tested: [library:]algo_compressionfactor
-samples = ["orig", "zlib_5", "lzo", "blosc:lz4", "blosc:lz4_9", "blosc:lz4hc", 'blosc:snappy']
+#samples = ["orig", "zlib_5", "lzo", "blosc:lz4", "blosc:lz4_9", "blosc:lz4hc", 'blosc:snappy']
+samples = ["orig", "zlib_5", "blosc:lz4", 'blosc:snappy']
 
 data = np.random.randint(0, 2**16, size=[100, 1024, 1024])
 non_zeros = int((1 - zeros_perc) * tot_size)
@@ -177,7 +178,6 @@ def write_file(fname, data, complib, complevel, bitshuffle=False):
         
     else:
         with closing(tables.open_file(fname, mode='w', )) as f:
-            print(data.dtype.name)
             table = f.create_carray('/', 'array', tables.Atom.from_type(data.dtype.name), shape=data.shape)
             for i in range(data.shape[0]):
                 start = time()
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument('--compression_level', type=int, help="compression level, when applicable", default=5)
     parser.add_argument('--dataset', '-d', type=str, help="Dataset name to be read", default="test")
     parser.add_argument('--keep', '-k', action="store_true", help="keep temporary files", default=False)
-    parser.add_argument('--round', '-r', type=int, help="Round half-up", default="-1")
+    parser.add_argument('--round', '-r', type=int, help="Round half-up", default=-1)
     parser.add_argument('--toint', '-i', action="store_true", help="Store converted data to in32",)
     parser.add_argument('--modulo', '-m', type=int, help="Store data as data - (data % [modulo])", default="1")
     parser.add_argument('--remove_lsb', action="store_true", help="set the LSB to 0")
@@ -286,7 +286,6 @@ if __name__ == "__main__":
     times = {}
     reads = {}
 
-    data2 = None
 
     for s in samples:
         sizes[s] = np.zeros((n_tries, 3))
@@ -296,6 +295,8 @@ if __name__ == "__main__":
 
     # Start loop over files, or tries when random data is generated
     for t in range(n_tries):
+        data2 = None
+
         # Create random data file, if no input files are available NOT TESTED
         if args.files == []:
             x = random.sample(list(range(size[0] * size[1])),
@@ -308,8 +309,8 @@ if __name__ == "__main__":
             data = h5py.File(args.files[t], "r")[args.dataset][:args.n][:]
             
             if args.remove_lsb:
-                data = np.bitwise_and(data, ~1).astype(np.uint16)# if operate conversion
-            
+                data = np.bitwise_and(data, ~1).astype(np.uint16)  # if operate conversion
+
             if args.convert:
                 if args.toint:
                     data2 = np.ndarray(shape=data.shape, dtype=np.int32)
@@ -332,7 +333,8 @@ if __name__ == "__main__":
                             data2[i][:] = temp[:]
                     else:
                         data2[i][:] = temp[:] 
-            elif args.round != 1:
+            elif args.round != -1:
+                print("Rounding")
                 data = round_half_up(data, args.round)
                 
         # from -10 kEv to 1000 keV
