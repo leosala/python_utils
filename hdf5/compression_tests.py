@@ -40,9 +40,6 @@ from pprint import pprint
 #samples = ["orig", "zlib_5", "lzo", "blosc:lz4", "blosc:lz4_9", "blosc:lz4hc", 'blosc:snappy']
 samples = ["orig", "zlib_5", "blosc:lz4", 'blosc:snappy']
 
-#data = np.random.randint(0, 2**16, size=[100, 1024, 1024])
-#non_zeros = int((1 - zeros_perc) * tot_size)
-
 
 def round_half_up(n, decimals=0):
     """Rounds a number using the half-up method. Taken
