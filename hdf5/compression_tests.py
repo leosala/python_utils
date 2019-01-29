@@ -126,7 +126,7 @@ def read_file(fname, dset="/array"):
     return [ntimes.sum(), ntimes.mean(), ntimes.std()]
 
 
-def write_file(fname, data, complib, complevel, bitshuffle=False):
+def write_file(fname, data, complib, complevel, bitshuffle=False, precision=-1):
     """Write an HDF5 file using pytables
     
     Parameters
@@ -160,8 +160,11 @@ def write_file(fname, data, complib, complevel, bitshuffle=False):
         if complib.find("blosc") == -1 and bitshuffle:
             bitshuffle = False
             print("Bitshuffle only enabled for BLOSC")
-        FILTERS = tables.Filters(complib=complib, complevel=complevel, bitshuffle=bitshuffle)
-    
+        if precision == -1:
+            FILTERS = tables.Filters(complib=complib, complevel=complevel, bitshuffle=bitshuffle)
+        else:
+            FILTERS = tables.Filters(complib=complib, complevel=complevel, bitshuffle=bitshuffle, least_significant_digit=precision)
+
         with closing(tables.open_file(fname, mode='w', filters=FILTERS)) as f:
             table = f.create_carray('/', 'array', tables.Atom.from_type(data.dtype.name), shape=data.shape)
     
@@ -173,6 +176,7 @@ def write_file(fname, data, complib, complevel, bitshuffle=False):
         
     else:
         with closing(tables.open_file(fname, mode='w', )) as f:
+
             table = f.create_carray('/', 'array', tables.Atom.from_type(data.dtype.name), shape=data.shape)
             for i in range(data.shape[0]):
                 start = time()
@@ -246,7 +250,9 @@ if __name__ == "__main__":
     parser.add_argument('--pedefile', type=str, help='file containing the Pedestal maps, if applicable', default=None)
     parser.add_argument('--gainfile', type=str, help='file containing the Gain maps, if applicable', default=None)
     
+    parser.add_argument('--precision', '-p', type=int, help="Precision to be stored. For floats, it represents the number of digits: for integers, it tells how many digits to keep. It uses the scale_offset HDF5 filter", default=-1)
     
+ 
     args = parser.parse_args()
 
     # Creation of output file names based on options
@@ -263,9 +269,14 @@ if __name__ == "__main__":
         label += "-mod_{}".format(args.modulo)
     if args.remove_lsb:
         label += "-remove_lsb"
+    if args.precision != -1:
+        label += "-precision_{}".format(args.precision)
+    if args.toint:
+        label += "-int32"
 
     histos = []
 
+    print(args, label)
 
     # Get the number of loops from file list, if available        
     n_tries = 1
@@ -314,6 +325,7 @@ if __name__ == "__main__":
                 data = np.bitwise_and(data, ~1).astype(np.uint16)  # if operate conversion
 
             if args.convert:
+                print("Converting")
                 if args.toint:
                     data2 = np.ndarray(shape=data.shape, dtype=np.int32)
                 else:
@@ -340,7 +352,7 @@ if __name__ == "__main__":
                 data = round_half_up(data, args.round)
                 
         # from -10 kEv to 1000 keV
-        bins = np.arange(-1e4, 1e6, 10)
+        bins = np.arange(-1e2, 1e5, 0.1)
         if data2 is not None:
             histos.append(np.histogram(np.clip(data2, bins[0], bins[-1]), bins=bins))
         else:
@@ -351,10 +363,11 @@ if __name__ == "__main__":
 
         # execute test for each sample / compression
         for s in samples:
+            print(s)
             fname = os.path.join(args.outdir, "test_" + s + label +".h5").replace(":", "_")
             
             if args.convert:
-                times[s][t] = write_file(fname, data2, s, args.compression_level, args.bitshuffle)
+                times[s][t] = write_file(fname, data2, s, args.compression_level, args.bitshuffle, precision=args.precision)
             else:
                 times[s][t] = write_file(fname, data, s, args.compression_level, args.bitshuffle)
 
