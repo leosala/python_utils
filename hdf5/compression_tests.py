@@ -24,26 +24,21 @@ from pprint import pprint
 
 
 ### Gain / pede files - needed if want to test calibrated data
-# TODO pass this as arguments
-gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF02T09V01/gains.h5"
+#gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF02T09V01/gains.h5"
 #gain_file = "/sf/alvra/config/jungfrau/gainMaps/JF06T32V01/gains.h5"
-pede_file = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
-#pede_file = "/sf/alvra/data/p17502/res/JF_pedestals/pedestal_20180813_0704.JF06T32V01.res.h5"
+#args.pedefile = "/sf/alvra/data/p17245/res/pedestal_20180703_1403_res.h5"
+#args.pedefile = "/sf/alvra/data/p17502/res/JF_pedestals/pedestal_20180813_0704.JF06T32V01.res.h5"
 
 ### Parameters for fake data production
-n_tries = 1
-data = None
-size = (400, 400)
-tot_size = size[0] * size[1]
-px_n = size[0] * size[1]
-zeros_perc = 0
+#data = None
+#size = (400, 400)
+#tot_size = size[0] * size[1]
+#px_n = size[0] * size[1]
+#zeros_perc = 0
 
 ### Compression algos to be tested: [library:]algo_compressionfactor
 #samples = ["orig", "zlib_5", "lzo", "blosc:lz4", "blosc:lz4_9", "blosc:lz4hc", 'blosc:snappy']
 samples = ["orig", "zlib_5", "blosc:lz4", 'blosc:snappy']
-
-data = np.random.randint(0, 2**16, size=[100, 1024, 1024])
-non_zeros = int((1 - zeros_perc) * tot_size)
 
 
 def round_half_up(n, decimals=0):
@@ -248,6 +243,9 @@ if __name__ == "__main__":
     parser.add_argument('--toint', '-i', action="store_true", help="Store converted data to in32",)
     parser.add_argument('--modulo', '-m', type=int, help="Store data as data - (data % [modulo])", default="1")
     parser.add_argument('--remove_lsb', action="store_true", help="set the LSB to 0")
+    parser.add_argument('--pedefile', type=str, help='file containing the Pedestal maps, if applicable', default=None)
+    parser.add_argument('--gainfile', type=str, help='file containing the Gain maps, if applicable', default=None)
+    
     
     args = parser.parse_args()
 
@@ -270,14 +268,18 @@ if __name__ == "__main__":
 
 
     # Get the number of loops from file list, if available        
+    n_tries = 1
     if args.files != []:
         n_tries = len(args.files)
 
     # Set up necessary conversion data, if required
     if args.convert:
-        gf = h5py.File(gain_file, "r")
+        if not args.gainfile or not args.pedefile:
+            print("[ERROR] In order to enable conversion, please provide both --pedefile and --gainfile")
+            sys.exit(1)
+        gf = h5py.File(args.gainfile, "r")
         G = gf["gains"][:]
-        cf = h5py.File(pede_file, "r")
+        cf = h5py.File(args.pedefile, "r")
         P = cf["gains"][:]
 
     # Initialize counters. Each counter contains 3 values: sum, mean, std
